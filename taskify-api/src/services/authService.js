@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
 import User from "../models/UserModel.js";
+import generateToken from '../utils/generateToken.js';
 
-const registerUser = async ({ name, email, password }) => {
+export const registerUser = async ({ name, email, password }) => {
   const emailExist = await User.findOne({ email });
   if (emailExist) {
     throw new Error("User already exit");
@@ -22,4 +23,16 @@ const registerUser = async ({ name, email, password }) => {
   return user;
 };
 
-export default registerUser;
+export const loginUser = async({email, password}) => {
+    const user = await User.findOne({email}).select("+password");
+    if(!user){
+        throw new Error("Invalid Credentials");
+    }
+    const validPassword = await bcrypt.compare(password, user.password);
+    if(!validPassword){
+        throw new Error("Invalid Password");
+    }
+    const {accessToken, refreshToken} = generateToken(user._id);
+    const addToken = await User.updateOne({_id : user._id}, {refreshToken});
+    return {accessToken, refreshToken};
+}
